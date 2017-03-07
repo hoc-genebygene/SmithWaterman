@@ -179,6 +179,7 @@ int main() {
     ++padded_row_size;
     std::cout << "Row size rounded up to next power of 2: " << padded_row_size << std::endl;
 
+    auto start = std::chrono::steady_clock::now();
     for (int r = 1; r < e_mat.GetNumRows(); ++r) {
         #pragma omp parallel for
         for (int c = 1; c < e_mat.GetNumCols(); ++c) {
@@ -313,7 +314,9 @@ int main() {
             h_mat[r][c] = std::max(h_hat_mat[r][c], e_mat[r][c] + gap_start_penalty);
         }
     }
+    auto stop = std::chrono::steady_clock::now();
 
+    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << " ms" << std::endl;
 //    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
 //        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
 //            std::cout << h_hat_mat[r][c] << "\t";
