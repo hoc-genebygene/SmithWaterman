@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <chrono>
 
 
 std::string GenerateRandomNucleotideString(size_t length) {
