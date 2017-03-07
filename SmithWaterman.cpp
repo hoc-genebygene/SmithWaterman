@@ -156,6 +156,7 @@ int main() {
     std::cout << "Row size rounded up to next power of 2: " << padded_row_size << std::endl;
 
     for (int r = 1; r < e_mat.GetNumRows(); ++r) {
+        #pragma omp parallel for
         for (int c = 1; c < e_mat.GetNumCols(); ++c) {
             f_mat[r][c] = std::max(f_mat[r-1][c], h_mat[r-1][c] + gap_start_penalty) + gap_extend_penalty;
 
@@ -189,6 +190,7 @@ int main() {
             std::vector<DataType> padded_row(padded_row_size);
 
             // Initialize padded_row
+            #pragma omp parallel for
             for (int c = 0; c < e_mat.GetNumCols(); ++c) {
                 padded_row[c] = h_hat_mat[r][c];
             }
@@ -238,6 +240,7 @@ int main() {
 
             // Upsweep (inner loop can be done in parallel)
             for (size_t d = 0; d < log2(padded_row_size); ++d) {
+                #pragma omp parallel for
                 for (size_t k = 0; k < padded_row_size / pow_of_2(d+1); ++k) {
                     size_t z = k * pow_of_2(d+1);
                     int64_t left_elem = padded_row[z + pow_of_2(d) - 1];
@@ -252,15 +255,10 @@ int main() {
 //                std::cout << std::endl;
             }
 
-            std::cout << "r " << r << ": ";
-            for (int k = 0; k < padded_row_size ; ++k) {
-                std::cout << padded_row[k] << "\t";
-            }
-            std::cout << std::endl;
-
             // Downsweep (inner loop can be done in parallel)
             padded_row[padded_row_size-1] = 0;
             for (int64_t d = log2(padded_row_size) - 1; d >= 0; --d) {
+                #pragma omp parallel for
                 for (size_t k = 0; k < padded_row_size / pow_of_2(d+1); ++k) {
                     size_t z = k * pow_of_2(d+1);
                     DataType temp = padded_row[z + pow_of_2(d) - 1];
@@ -285,6 +283,7 @@ int main() {
         }
 
         // Calculate h_mat
+        #pragma omp parallel for
         for (int c = 0; c < e_mat.GetNumCols(); ++c) {
             //std::cout << r << " " << c << " " << h_hat_mat[r][c] << " " << e_mat[r][c] - gap_start_penalty << std::endl;
             h_mat[r][c] = std::max(h_hat_mat[r][c], e_mat[r][c] + gap_start_penalty);
