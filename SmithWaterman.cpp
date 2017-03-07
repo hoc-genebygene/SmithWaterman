@@ -46,6 +46,9 @@ int main() {
     DataType gap_start_penalty = -8;
     DataType gap_extend_penalty = -1;
 
+//    std::string seq1 = "CAGCCUCGCUUAG";
+//    std::string seq2 = "AAUGCCAUUGCCGG";
+
     std::string seq1 = "CAGCCUCGCUUAG";
     std::string seq2 = "AAUGCCAUUGCCGG";
 
@@ -168,7 +171,8 @@ int main() {
             };
 
 
-            auto log2 = [](size_t num) {
+            auto log2 = [](size_t num) { // This has no branching on GPU
+
                 assert(num != 0);
 
                 size_t log = 0;
@@ -189,48 +193,90 @@ int main() {
                 padded_row[c] = h_hat_mat[r][c];
             }
 
-            std::cout << "Original padded row:\t";
-            for (size_t k = 0; k < padded_row_size; ++k) {
+//            std::cout << "Original padded row:\t";
+//            for (size_t k = 0; k < padded_row_size; ++k) {
+//                std::cout << padded_row[k] << "\t";
+//            }
+//            std::cout << std::endl;
+
+//            // Upsweep (inner loop can be done in parallel)
+//            for (size_t d = 0; d < log2(padded_row_size); ++d) {
+//                for (size_t k = 0; k < padded_row_size; k += pow_of_2(d+1)) {
+//                    //std::cout << k + pow_of_2(d) - 1 << " " << k + pow_of_2(d+1) - 1 << std::endl;
+//                    int64_t left_elem = padded_row[k + pow_of_2(d) - 1];
+//                    int64_t right_elem = padded_row[k + pow_of_2(d+1) - 1] - (pow_of_2(d) * gap_extend_penalty);
+//                    //std::cout << left_elem << " " << right_elem << std::endl;
+//                    padded_row[k + pow_of_2(d+1) - 1] = std::max(left_elem, right_elem);
+//                }
+//
+//                std::cout << "Upswept padded row " << d << ":\t";
+//                for (size_t k = 0; k < padded_row_size; ++k) {
+//                    std::cout << padded_row[k] << "\t";
+//                }
+//                std::cout << std::endl;
+//            }
+//
+//            // Downsweep (inner loop can be done in parallel)
+//            padded_row[padded_row_size-1] = 0;
+//            for (int64_t d = log2(padded_row_size) - 1; d >= 0; --d) {
+//                for (size_t k = 0; k < padded_row_size; k += pow_of_2(d+1)) {
+//                    //std::cout << k + pow_of_2(d) - 1 << " " << k + pow_of_2(d+1) - 1 << std::endl;
+//                    DataType temp = padded_row[k + pow_of_2(d) - 1];
+//                    padded_row[k + pow_of_2(d) - 1] = padded_row[k + pow_of_2(d+1) - 1];
+//                    int64_t left_elem = temp;
+//                    int64_t right_elem = padded_row[k + pow_of_2(d+1) - 1];
+//                    padded_row[k + pow_of_2(d+1) - 1] = std::max(left_elem, right_elem) + (pow_of_2(d) * gap_extend_penalty);
+//                }
+//
+//                std::cout << "Downswept padded row " << d << ":\t";
+//                for (size_t k = 0; k < padded_row_size; ++k) {
+//                    std::cout << padded_row[k] << "\t";
+//                }
+//                std::cout << std::endl;
+//            }
+//            std::cout << std::endl;
+
+            // Upsweep (inner loop can be done in parallel)
+            for (size_t d = 0; d < log2(padded_row_size); ++d) {
+                for (size_t k = 0; k < padded_row_size / pow_of_2(d+1); ++k) {
+                    size_t z = k * pow_of_2(d+1);
+                    int64_t left_elem = padded_row[z + pow_of_2(d) - 1];
+                    int64_t right_elem = padded_row[z + pow_of_2(d+1) - 1] - (pow_of_2(d) * gap_extend_penalty);
+                    padded_row[z + pow_of_2(d+1) - 1] = std::max(left_elem, right_elem);
+                }
+
+//                std::cout << "Upswept padded row " << d << ":\t";
+//                for (size_t k = 0; k < padded_row_size; ++k) {
+//                    std::cout << padded_row[k] << "\t";
+//                }
+//                std::cout << std::endl;
+            }
+
+            std::cout << "r " << r << ": ";
+            for (int k = 0; k < padded_row_size ; ++k) {
                 std::cout << padded_row[k] << "\t";
             }
             std::cout << std::endl;
 
-            // Upsweep (can be done in parallel)
-            for (size_t d = 0; d < log2(padded_row_size); ++d) {
-                for (size_t k = 0; k < padded_row_size; k += pow_of_2(d+1)) {
-                    //std::cout << k + pow_of_2(d) - 1 << " " << k + pow_of_2(d+1) - 1 << std::endl;
-                    int64_t left_elem = padded_row[k + pow_of_2(d) - 1];
-                    int64_t right_elem = padded_row[k + pow_of_2(d+1) - 1] - (pow_of_2(d) * gap_extend_penalty);
-                    //std::cout << left_elem << " " << right_elem << std::endl;
-                    padded_row[k + pow_of_2(d+1) - 1] = std::max(left_elem, right_elem);
-                }
-
-                std::cout << "Upswept padded row " << d << ":\t";
-                for (size_t k = 0; k < padded_row_size; ++k) {
-                    std::cout << padded_row[k] << "\t";
-                }
-                std::cout << std::endl;
-            }
-
-            // Downsweep (can be done in parallel)
+            // Downsweep (inner loop can be done in parallel)
             padded_row[padded_row_size-1] = 0;
             for (int64_t d = log2(padded_row_size) - 1; d >= 0; --d) {
-                for (size_t k = 0; k < padded_row_size; k += pow_of_2(d+1)) {
-                    //std::cout << k + pow_of_2(d) - 1 << " " << k + pow_of_2(d+1) - 1 << std::endl;
-                    DataType temp = padded_row[k + pow_of_2(d) - 1];
-                    padded_row[k + pow_of_2(d) - 1] = padded_row[k + pow_of_2(d+1) - 1];
+                for (size_t k = 0; k < padded_row_size / pow_of_2(d+1); ++k) {
+                    size_t z = k * pow_of_2(d+1);
+                    DataType temp = padded_row[z + pow_of_2(d) - 1];
+                    padded_row[z + pow_of_2(d) - 1] = padded_row[z + pow_of_2(d+1) - 1];
                     int64_t left_elem = temp;
-                    int64_t right_elem = padded_row[k + pow_of_2(d+1) - 1];
-                    padded_row[k + pow_of_2(d+1) - 1] = std::max(left_elem, right_elem) + (pow_of_2(d) * gap_extend_penalty);
+                    int64_t right_elem = padded_row[z + pow_of_2(d+1) - 1];
+                    padded_row[z + pow_of_2(d+1) - 1] = std::max(left_elem, right_elem) + (pow_of_2(d) * gap_extend_penalty);
                 }
 
-                std::cout << "Downswept padded row " << d << ":\t";
-                for (size_t k = 0; k < padded_row_size; ++k) {
-                    std::cout << padded_row[k] << "\t";
-                }
-                std::cout << std::endl;
+//                std::cout << "Downswept padded row " << d << ":\t";
+//                for (size_t k = 0; k < padded_row_size; ++k) {
+//                    std::cout << padded_row[k] << "\t";
+//                }
+//                std::cout << std::endl;
             }
-            std::cout << std::endl;
+            //std::cout << std::endl;
 
             // copy padded_row back into e_mat
             for (int c = 0; c < e_mat.GetNumCols(); ++c) {
@@ -238,35 +284,38 @@ int main() {
             }
         }
 
+        // Calculate h_mat
         for (int c = 0; c < e_mat.GetNumCols(); ++c) {
-            std::cout << r << " " << c << " " << h_hat_mat[r][c] << " " << e_mat[r][c] - gap_start_penalty << std::endl;
+            //std::cout << r << " " << c << " " << h_hat_mat[r][c] << " " << e_mat[r][c] - gap_start_penalty << std::endl;
             h_mat[r][c] = std::max(h_hat_mat[r][c], e_mat[r][c] + gap_start_penalty);
         }
     }
 
-    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
-        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
-            std::cout << h_hat_mat[r][c] << "\t";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-
-    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
-        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
-            std::cout << e_mat[r][c] << "\t";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-
+//    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
+//        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
+//            std::cout << h_hat_mat[r][c] << "\t";
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << std::endl;
+//
+//    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
+//        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
+//            std::cout << e_mat[r][c] << "\t";
+//        }
+//        std::cout << std::endl;
+//    }
+//    std::cout << std::endl;
+//
     for (int r = 0; r < e_mat.GetNumRows(); ++r) {
         for (int c = 0; c < e_mat.GetNumCols(); ++c) {
             std::cout << h_mat[r][c] << "\t";
         }
-        std::cout << std::endl;
+        std::cout << "\n";
     }
     std::cout << std::endl;
+
+    std::cout << h_mat[h_mat.GetNumRows()-1][h_mat.GetNumCols()-1] << std::endl;
 
     return 0;
 }
