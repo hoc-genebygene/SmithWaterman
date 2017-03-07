@@ -4,7 +4,33 @@
 #include <cstddef>
 #include <iostream>
 #include <vector>
+#include <random>
 
+
+std::string GenerateRandomNucleotideString(size_t length) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 3);
+
+    std::vector<char> vec(length);
+
+    std::generate_n(vec.begin(), length, [&dis, &gen]() {
+        switch(dis(gen)) {
+            case 0:
+                return 'A';
+            case 1:
+                return 'C';
+            case 2:
+                return 'G';
+            case 3:
+                return 'T';
+            default:
+                throw std::logic_error("Random number generator too large");
+        }
+    });
+
+    return std::string(vec.begin(), vec.end());
+}
 
 // Matrix class but implemented as linear vector due to performance considerations.
 // Note that SW access things in column major order. We will use the mat[r][c] convention and internally organize the vector so that accessing the next element in the row is contiguous.
@@ -49,11 +75,9 @@ int main() {
 //    std::string seq1 = "CAGCCUCGCUUAG";
 //    std::string seq2 = "AAUGCCAUUGCCGG";
 
-    std::string seq1 = "CAGCCUCGCUUAG";
-    std::string seq2 = "AAUGCCAUUGCCGG";
+    std::string seq1 = GenerateRandomNucleotideString(2000000); // columns
+    std::string seq2 = GenerateRandomNucleotideString(150); // rows
 
-//    std::string seq1 = "TGTTACGG";
-//    std::string seq2 = "GGTTGACTA";
 
     Matrix<DataType> e_mat(seq2.size() + 1, seq1.size() + 1, 0);
     Matrix<DataType> f_mat(seq2.size() + 1, seq1.size() + 1, 0);
