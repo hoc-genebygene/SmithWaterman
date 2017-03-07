@@ -306,15 +306,15 @@ int main() {
 //    }
 //    std::cout << std::endl;
 //
-    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
-        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
-            std::cout << h_mat[r][c] << "\t";
-        }
-        std::cout << "\n";
-    }
-    std::cout << std::endl;
+//    for (int r = 0; r < e_mat.GetNumRows(); ++r) {
+//        for (int c = 0; c < e_mat.GetNumCols(); ++c) {
+//            std::cout << h_mat[r][c] << "\t";
+//        }
+//        std::cout << "\n";
+//    }
+//    std::cout << std::endl;
 
-    std::cout << h_mat[h_mat.GetNumRows()-1][h_mat.GetNumCols()-1] << std::endl;
+//    std::cout << h_mat[h_mat.GetNumRows()-1][h_mat.GetNumCols()-1] << std::endl;
 
     return 0;
 }
